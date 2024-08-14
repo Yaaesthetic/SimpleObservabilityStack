@@ -1,0 +1,165 @@
+# Comments are provided throughout this file to help you get started.
+# If you need more help, visit the Docker Compose reference guide at
+# https://docs.docker.com/go/compose-spec-reference/
+
+# Here the instructions define your application as a service called "server".
+# This service is built from the Dockerfile in the current directory.
+# You can add other services your application may depend on here, such as a
+# database or a cache. For examples, see the Awesome Compose repository:
+# https://github.com/docker/awesome-compose
+
+name: simple_thing
+services:
+  java-simple:
+    container_name: java-simple
+    restart: always
+    networks:
+      - my_bridge_network
+    build:
+      context: .
+    environment:
+      OTEL_TRACES_EXPORTER: logging
+      OTEL_METRICS_EXPORTER: logging
+      OTEL_LOGS_EXPORTER: logging
+    ports:
+      - 8080:8080
+#    volumes:
+#      - "./agent/opentelemetry-javaagent.jar:/app/opentelemetry-javaagent.jar"
+#    develop:
+#      watch:
+#        - path: ./app/app.jar
+#          action: rebuild
+#        - path: ./app
+#          target: /app.jar
+#          action: sync
+    depends_on:
+      - mongo
+      - grafana
+
+  # MongoDB Atlas service
+  mongo:
+    container_name: mongo
+    image: mongo:6
+    restart: always
+    networks:
+      - my_bridge_network
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=0000
+      - MONGO_URI=mongodb://mongo:27017/dice-db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo --host mongo:27017 --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # Prometheus for metrics
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    networks:
+      - my_bridge_network
+#    extra_hosts:
+#      - host.docker.internal:host-gateway
+    volumes:
+      - "./docker/prometheus.yml:/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+
+
+
+    ## Tempo for traces
+  tempo:
+    image: grafana/tempo
+    container_name: tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - "./docker/tempo.yml:/etc/tempo.yaml:ro"
+      - "./docker/tempo/tempo-data:/tmp/tempo"
+    ports: # protocol used is !!! tcp !!! protocol
+      - "3200:3200" # This is the main port used by Tempo for its HTTP server. It's where Tempo serves its own API
+      - "9411:9411" # Tempo primarily receives data on this port rather than sending it, Tempo listens on port 9411 to accept spans from application "zipkin"
+    networks:
+      - my_bridge_network
+#      - "14268"  # jaeger ingest
+#      - "3200"   # tempo
+#      - "55680"  # otlp grpc
+#      - "55681"  # otlp http
+#      - "9411"   # zipkin
+
+
+  # Loki for loggers
+  loki:
+    image: grafana/loki:main
+    container_name: loki
+    command: [ "-config.file=/etc/loki/local-config.yaml" ]
+    expose:
+      - "3100"
+    networks:
+      - my_bridge_network
+
+
+  # Grafana for dashboard
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./docker/grafana:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=password
+    networks:
+      - my_bridge_network
+    depends_on:
+      - loki
+      - tempo
+      - prometheus
+
+
+networks:
+  my_bridge_network:
+    driver: bridge
+
+# No volumes or secrets are needed since MongoDB Atlas is hosted externally
+
+
+    # The commented out section below is an example of how to define a PostgreSQL
+    # database that your application can use. `depends_on` tells Docker Compose to
+    # start the database before your application. The `db-data` volume persists the
+    # database data between container restarts. The `db-password` secret is used
+    # to set the database password. You must create `db/password.txt` and add
+    # a password of your choosing to it before running `docker-compose up`.
+
+#    depends_on:
+#      db:
+#        condition: service_healthy
+#  db:
+#    image: postgres
+#    restart: always
+#    user: postgres
+#    secrets:
+#      - db-password
+#    volumes:
+#      - db-data:/var/lib/postgresql/data
+#    environment:
+#      - POSTGRES_DB=example
+#      - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
+#    expose:
+#      - 5432
+#    healthcheck:
+#      test: [ "CMD", "pg_isready" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+#volumes:
+#   db-data:
+#secrets:
+#  db-password:
+#    file: db/password.txt
