@@ -1,0 +1,33 @@
+# Stage 1: Build Stage
+#3.9.7
+FROM maven:3.9.2-eclipse-temurin-17 AS build
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the pom.xml and the source code
+COPY pom.xml ./
+COPY src ./src
+
+# Run Maven to build the project
+RUN mvn clean package -DskipTests
+
+# Stage 2: Final Stage
+FROM eclipse-temurin:17-jre-jammy
+
+# Create a non-privileged user
+ARG UID=10001
+RUN adduser --disabled-password --gecos "" --home "/nonexistent" --shell "/sbin/nologin" --no-create-home --uid "${UID}" appuser
+USER appuser
+
+# Copy the built JAR and the OpenTelemetry agent
+COPY --from=build /app/target/java-simple-1.0-SNAPSHOT.jar /app/app.jar
+COPY --from=build /app/agent/opentelemetry-javaagent.jar /agent/opentelemetry-javaagent.jar
+#COPY --from=build /app/prometheus.yml /prometheus.yml
+
+# Expose the application port
+EXPOSE 8080
+
+# Set the entrypoint and JVM options
+#ENTRYPOINT ["java", "-javaagent:/agent/opentelemetry-javaagent.jar", "-Dotel.traces.exporter=logging", "-Dotel.metrics.exporter=logging", "-Dotel.logs.exporter=logging", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java","-jar", "/app/app.jar"]
