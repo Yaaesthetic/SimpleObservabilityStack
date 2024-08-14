@@ -1,10 +1,8 @@
 package otel.javasimple;
 
 import io.micrometer.core.instrument.*;
-import io.prometheus.metrics.core.metrics.Summary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
