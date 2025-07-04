@@ -83,6 +83,59 @@ This project demonstrates how to set up a Java microservice with observability t
 - **Loki**: Edit log aggregation configurations in `docker/loki/local-config.yaml`.
 - **Java Application**: Update environment variables in the `docker-compose.yml` to customize OpenTelemetry exporters.
 
+
+
+## Observability Highlights
+
+### 1. What the demo does
+- **Shows we care about reliability.**
+- Tracks **how long** a request takes, **how many** requests arrive, and a quick **“is the service(include dbs) up?”** check.
+
+### 2. How it works (high level)
+
+| Piece | Why it matters | What HR / a Java dev should know |
+|-------|----------------|----------------------------------|
+| **Custom Metrics** | Gives hard numbers on performance and usage. | Built with Spring + Micrometer; data ends up in dashboards like Grafana. |
+| **Health Check** | Confirms an external API we depend on is alive. | Uses Spring Boot Actuator so monitoring tools see **UP / DOWN** instantly. |
+
+### 3. Proof inside the code
+
+- 🕒 **Timer**: measures the time our `/sleep` endpoint really takes.
+- 🔢 **Counter**: adds one every time someone hits `/sleep`.
+- 📈 **Gauge**: placeholder that would track active users in a real app.
+- ✅ **HealthIndicator**: pings another endpoint and reports **UP** with details or **DOWN** with the error.
+
+
+## Screenshots
+1. Grafana Dashboard – Custom Sleep Method Metrics Overview
+<!-- Grafana dashboard for the Sleep endpoint demo -->
+![Grafana Dashboard – Custom Sleep Method Metrics Overview](images/Grafana_Dashboard-Custom_Sleep_Method_Metrics_Overview.jpg)
+
+Grafana panels visualising custom metrics for the /sleep?time= endpoint: request counter, latency timer, total accumulated sleep time and a demo active-user
+
+2. Graph of Some Metrics
+<!-- Example time-series graph -->
+![Graph of Some Metrics](images/Gragh_of_some_Metrics.png)
+
+Raw Prometheus UI with two time-series: disk_free_bytes (disk space trending down) and jvm_buffer_count_buffers (JVM buffer count rising).
+
+3. Metrics of Applications
+<!-- Summary of application metrics -->
+![Metrics of Applications](images/Metrics_of_applications.png)
+
+Prometheus Metrics Explorer listing dozens of Micrometer metrics, including and can limited also depend on needs(from server). 
+
+4. My Grafana Dashboard
+<!-- Personal dashboard overview -->
+![My Grafana Dashboard](images/My_Dashboard_at_Grafana.jpg)
+
+Full Grafana dashboard: uptime, heap/non-heap gauges, custom sleep gauges, CPU usage, load average and G1 memory areas—all in one screen and more.
+
+
+
+
+
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request if you have any improvements or bug fixes.
